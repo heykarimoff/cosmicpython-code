@@ -11,7 +11,7 @@ class OutOfStock(Exception):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass(unsafe_hash=True)
 class OrderLine:
     orderid: str
     sku: Sku
@@ -27,6 +27,9 @@ class Batch:
         self.eta = eta
         self._purchased_quantity = qty
         self._allocations: Set[OrderLine] = set()
+
+    def __repr__(self):
+        return f"<Batch {self.reference}>"
 
     def __hash__(self):
         return hash(self.reference)
