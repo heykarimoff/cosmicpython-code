@@ -20,9 +20,11 @@ logs:
 test:
 	pytest --tb=short
 
-format:
-	black -l 80 $(find * -name '*.py')
+check-black:
+	black --line-length 80 --diff --check .
 
-lint:
-	isort $(find * -name '*.py') --check --diff
+check-isort:
+	isort . --check --diff
+
+check-flake8:
 	flake8 $(find * -name '*.py')
