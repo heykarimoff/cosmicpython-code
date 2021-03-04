@@ -1,0 +1,8 @@
+pytest
+sqlalchemy
+flask
+psycopg2-binary
+requests
+black
+flake8
+isort

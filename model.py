@@ -42,7 +42,7 @@ class Batch:
     def __gt__(self, other) -> bool:
         if self.eta is None:
             return False
-        if other.eta is False:
+        if other.eta is None:
             return True
 
         return self.eta > other.eta

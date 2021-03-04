@@ -1,11 +1,11 @@
 from sqlalchemy import (
     Column,
+    Date,
+    ForeignKey,
     Integer,
     MetaData,
     String,
     Table,
-    Date,
-    ForeignKey,
 )
 from sqlalchemy.orm import mapper, relationship
 
