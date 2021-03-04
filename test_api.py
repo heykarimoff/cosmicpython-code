@@ -25,7 +25,7 @@ def random_orderid(name=""):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_api_returns_allocation(add_stock):
+def test_returns_200_and_allocated_batch(add_stock):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
@@ -47,34 +47,7 @@ def test_api_returns_allocation(add_stock):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_allocations_are_persisted(add_stock):
-    sku = random_sku()
-    batch1, batch2 = random_batchref(1), random_batchref(2)
-    order1, order2 = random_orderid(1), random_orderid(2)
-    add_stock(
-        [
-            (batch1, sku, 10, "2011-01-01"),
-            (batch2, sku, 10, "2011-01-02"),
-        ]
-    )
-
-    line1 = {"orderid": order1, "sku": sku, "qty": 10}
-    line2 = {"orderid": order2, "sku": sku, "qty": 10}
-    url = config.get_api_url()
-
-    # first order uses up all stock in batch 1
-    response = requests.post(f"{url}/allocate", json=line1)
-    assert response.status_code == 201
-    assert response.json()["batchref"] == batch1
-
-    # second order should go to batch 2
-    response = requests.post(f"{url}/allocate", json=line2)
-    assert response.status_code == 201
-    assert response.json()["batchref"] == batch2
-
-
-@pytest.mark.usefixtures("restart_api")
-def test_400_message_for_out_of_stock(add_stock):
+def test_retuns_400_and_out_of_stock_message(add_stock):
     sku, small_batch, large_order = (
         random_sku(),
         random_batchref(),
@@ -95,7 +68,7 @@ def test_400_message_for_out_of_stock(add_stock):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_400_message_for_invalid_sku():
+def test_returns_400_invalid_sku_message():
     unknown_sku, orderid = random_sku(), random_orderid()
 
     data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
