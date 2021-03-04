@@ -33,6 +33,6 @@ jobs:
       - name: Lint with black
         run: |
           make check-black
-      - name: Test with pytest
+      - name: Run unit tests
         run: |
-          pytest --tb=short
+          make test-unit

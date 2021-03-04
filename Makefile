@@ -17,8 +17,13 @@ down:
 logs:
 	docker-compose logs --tail=100 app
 
-test:
-	pytest --tb=short
+test: test-e2e test-unit
+
+test-e2e:
+	pytest -m e2e --tb=short
+
+test-unit:
+	pytest -m "not e2e" --tb=short
 
 check-black:
 	black --line-length 80 --diff --check .
