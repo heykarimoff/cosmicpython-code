@@ -77,3 +77,38 @@ def test_returns_400_invalid_sku_message():
 
     assert response.status_code == 400
     assert response.json()["message"] == f"Invalid sku {unknown_sku}"
+
+
+@pytest.mark.usefixtures("restart_api")
+def test_deallocate(add_stock):
+    sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
+    batch = random_batchref()
+    add_stock([(batch, sku, 100, "2011-01-01")])
+    url = config.get_api_url()
+
+    # fully allocate
+    response = requests.post(
+        f"{url}/allocate", json={"orderid": order1, "sku": sku, "qty": 100}
+    )
+
+    assert response.json()["batchref"] == batch
+
+    # cannot allocate second order
+    response = requests.post(
+        f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
+    )
+
+    assert response.status_code == 400
+
+    # deallocate
+    response = requests.post(
+        f"{url}/deallocate", json={"orderid": order1, "sku": sku, "qty": 100}
+    )
+    assert response.ok
+
+    # now we can allocate second order
+    response = requests.post(
+        f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
+    )
+    assert response.ok
+    assert response.json()["batchref"] == batch

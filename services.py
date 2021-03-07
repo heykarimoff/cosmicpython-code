@@ -22,3 +22,12 @@ def allocate(
     session.commit()
 
     return batchref
+
+
+def deallocate(
+    line: model.OrderLine, repo: repository.AbstractRepository, session
+) -> None:
+    batches = repo.list()
+
+    model.deallocate(line, batches)
+    session.commit()

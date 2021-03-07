@@ -54,3 +54,15 @@ def test_commits():
     services.allocate(line, repo, session)
 
     assert session.committed
+
+
+def test_deallocate():
+    line = model.OrderLine("o1", "COMPLICATED-LAMP", 10)
+    batch = model.Batch("b1", "COMPLICATED-LAMP", 100, eta=None)
+    batch.allocate(line)
+    repo = FakeRepository([batch])
+
+    assert batch.allocated_quaitity == 10
+    services.deallocate(line, repo, FakeSession())
+
+    assert batch.allocated_quaitity == 0

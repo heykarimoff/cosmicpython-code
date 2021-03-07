@@ -76,3 +76,8 @@ def allocate(line: OrderLine, batches: List[Batch]):
     batch.allocate(line)
 
     return batch.reference
+
+
+def deallocate(line: OrderLine, batches: List[Batch]):
+    for batch in batches:
+        batch.deallocate(line)
