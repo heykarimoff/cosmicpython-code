@@ -13,6 +13,21 @@ Session = sessionmaker(bind=create_engine(config.get_postgres_uri()))
 app = Flask(__name__)
 
 
+@app.route("/add_batch", methods=["POST"])
+def add_batch_endpoint():
+    session = Session()
+    repo = repository.SqlAlchemyRepository(session)
+    batch = model.Batch(
+        reference=request.json["reference"],
+        sku=request.json["sku"],
+        qty=request.json["qty"],
+        eta=request.json.get("eta"),
+    )
+    services.add_batch(batch, repo, session)
+
+    return {"message": "Created"}, 201
+
+
 @app.route("/allocate", methods=["POST"])
 def allocate_endpoint():
     session = Session()

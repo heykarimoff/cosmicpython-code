@@ -6,8 +6,8 @@ import services
 
 
 class FakeRepository(repository.AbstractRepository):
-    def __init__(self, batches):
-        self._batches = batches
+    def __init__(self, batches=None):
+        self._batches = batches or set()
 
     def add(self, batch):
         self._batches.add(batch)
@@ -24,6 +24,15 @@ class FakeSession:
 
     def commit(self):
         self.committed = True
+
+
+def test_add_batch():
+    batch = model.Batch("b1", "COMPLICATED-LAMP", 100, eta=None)
+    repo = FakeRepository()
+
+    services.add_batch(batch, repo, FakeSession())
+
+    assert repo.list() == [batch]
 
 
 def test_returns_allocation():

@@ -25,6 +25,36 @@ def random_orderid(name=""):
 
 
 @pytest.mark.usefixtures("restart_api")
+def test_add_batch():
+    sku, othersku = random_sku(), random_sku("other")
+    earlybatch = random_batchref(1)
+    laterbatch = random_batchref(2)
+    url = config.get_api_url()
+
+    response = requests.post(
+        f"{url}/add_batch",
+        json={
+            "reference": earlybatch,
+            "sku": sku,
+            "qty": 100,
+        },
+    )
+
+    assert response.status_code == 201
+
+    response = requests.post(
+        f"{url}/add_batch",
+        json={
+            "reference": laterbatch,
+            "sku": othersku,
+            "qty": 50,
+            "eta": "2021-01-01",
+        },
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.usefixtures("restart_api")
 def test_returns_200_and_allocated_batch(add_stock):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)

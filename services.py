@@ -10,6 +10,11 @@ def is_valid_sku(sku, batches) -> bool:
     return sku in {b.sku for b in batches}
 
 
+def add_batch(batch: model.Batch, repo: repository.AbstractRepository, session):
+    repo.add(batch)
+    session.commit()
+
+
 def allocate(
     line: model.OrderLine, repo: repository.AbstractRepository, session
 ) -> str:
