@@ -1,8 +1,7 @@
 import pytest
-
-from domain import model
 from adapters import repository
-from service_layer import services
+from domain import model
+from service_layer import services, unit_of_work
 
 
 class FakeRepository(repository.AbstractRepository):
@@ -23,76 +22,65 @@ class FakeRepository(repository.AbstractRepository):
         return FakeRepository([model.Batch(reference, sku, qty, eta)])
 
 
-class FakeSession:
-    committed = False
+class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
+    def __init__(self):
+        self.batches = FakeRepository()
+        self.committed = False
 
     def commit(self):
         self.committed = True
 
+    def rollback(self):
+        pass
+
 
 def test_add_batch():
-    repo, session = FakeRepository(), FakeSession()
+    uow = FakeUnitOfWork()
 
     services.add_batch(
-        reference="batch1",
-        sku="COMPLICATED-LAMP",
-        qty=100,
-        eta=None,
-        repo=repo,
-        session=session,
+        reference="batch1", sku="COMPLICATED-LAMP", qty=100, eta=None, uow=uow
     )
 
-    assert repo.get("batch1") is not None
-    assert session.committed
+    assert uow.batches.get("batch1") is not None
+    assert uow.committed
 
 
 def test_allocate_returns_allocation():
-    repo = FakeRepository.for_batch("batch1", "COMPLICATED-LAMP", 100)
-    session = FakeSession()
+    uow = FakeUnitOfWork()
+    services.add_batch("batch1", "COMPLICATED-LAMP", 100, None, uow)
 
     result = services.allocate(
-        orderid="order1",
-        sku="COMPLICATED-LAMP",
-        qty=10,
-        repo=repo,
-        session=session,
+        orderid="order1", sku="COMPLICATED-LAMP", qty=10, uow=uow
     )
 
     assert result == "batch1"
-    assert session.committed
+    assert uow.committed
 
 
 def test_allocate_errors_for_invalid_sku():
-    repo = FakeRepository.for_batch("batch1", "AREALSKU", 100, eta=None)
+    uow = FakeUnitOfWork()
+    services.add_batch("batch1", "AREALSKU", 100, None, uow)
 
     with pytest.raises(
         services.InvalidSku, match="Invalid sku NON-EXISTENTSKU"
     ):
         services.allocate(
-            orderid="order1",
-            sku="NON-EXISTENTSKU",
-            qty=10,
-            repo=repo,
-            session=FakeSession(),
+            orderid="order1", sku="NON-EXISTENTSKU", qty=10, uow=uow
         )
 
 
 def test_deallocate():
-    repo = FakeRepository.for_batch("batch1", "COMPLICATED-LAMP", 100)
-    batch = repo.get("batch1")
-    session = FakeSession()
+    uow = FakeUnitOfWork()
+    services.add_batch("batch1", "COMPLICATED-LAMP", 100, None, uow)
 
     result = services.allocate(
-        orderid="order1",
-        sku="COMPLICATED-LAMP",
-        qty=10,
-        repo=repo,
-        session=session,
+        orderid="order1", sku="COMPLICATED-LAMP", qty=10, uow=uow
     )
     assert result == "batch1"
+    batch = uow.batches.get("batch1")
     assert batch.allocated_quaitity == 10
 
-    services.deallocate("order1", "COMPLICATED-LAMP", 10, repo, session)
+    services.deallocate("order1", "COMPLICATED-LAMP", 10, uow)
 
     assert batch.allocated_quaitity == 0
-    assert session.committed
+    assert uow.committed
