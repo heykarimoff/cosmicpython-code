@@ -1,3 +1,4 @@
+from allocation.domain import model
 from sqlalchemy import (
     Column,
     Date,
@@ -8,8 +9,6 @@ from sqlalchemy import (
     Table,
 )
 from sqlalchemy.orm import mapper, relationship
-
-from domain import model
 
 metadata = MetaData()
 order_lines = Table(

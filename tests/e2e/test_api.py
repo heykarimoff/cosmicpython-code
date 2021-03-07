@@ -2,8 +2,7 @@ import uuid
 
 import pytest
 import requests
-
-import config
+from allocation import config
 
 pytestmark = pytest.mark.e2e
 

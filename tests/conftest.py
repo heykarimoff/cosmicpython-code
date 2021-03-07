@@ -3,13 +3,12 @@ from pathlib import Path
 
 import pytest
 import requests
+from allocation import config
+from allocation.adapters.orm import metadata, start_mappers
 from requests.exceptions import ConnectionError
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import clear_mappers, sessionmaker
-
-import config
-from adapters.orm import metadata, start_mappers
 
 
 @pytest.fixture
@@ -87,6 +86,8 @@ def post_to_add_stock(url):
 
 @pytest.fixture
 def restart_api():
-    (Path(__file__).parent / "../entrypoints/flask_app.py").touch()
+    (
+        Path(__file__).parent / "../src/allocation/entrypoints/flask_app.py"
+    ).touch()
     time.sleep(0.5)
     wait_for_webapp_to_come_up()

@@ -17,16 +17,16 @@ down:
 logs:
 	docker-compose logs --tail=100 app
 
-test: test-e2e test-unit
+test: up test-e2e test-integration test-unit
 
 test-e2e:
-	pytest -m e2e --tb=short tests/e2e
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e
 
 test-integration:
-	pytest --tb=short tests/integration
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration
 
 test-unit:
-	pytest --tb=short tests/unit
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit
 
 check-black:
 	black --line-length 80 --diff --check .

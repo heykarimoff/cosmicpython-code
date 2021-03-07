@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from adapters import orm, repository
-from domain import model
+from allocation.adapters import orm, repository
+from allocation.domain import model
+from allocation.service_layer import services, unit_of_work
 from flask import Flask, jsonify, request
-from service_layer import services, unit_of_work
 
 orm.start_mappers()
 app = Flask(__name__)
