@@ -13,6 +13,11 @@ from adapters.orm import metadata, start_mappers
 
 
 @pytest.fixture
+def url():
+    return config.get_api_url()
+
+
+@pytest.fixture
 def in_memory_db():
     engine = create_engine("sqlite:///:memory:")
     metadata.create_all(engine)
@@ -64,42 +69,15 @@ def postgres_session(postgres_db):
 
 
 @pytest.fixture
-def add_stock(postgres_session):
-    batches_added = set()
-    skus_added = set()
-
-    def _add_stock(lines):
-        for ref, sku, qty, eta in lines:
-            postgres_session.execute(
-                "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
-                " VALUES (:ref, :sku, :qty, :eta)",
-                dict(ref=ref, sku=sku, qty=qty, eta=eta),
-            )
-            [[batch_id]] = postgres_session.execute(
-                "SELECT id FROM batches WHERE reference=:ref AND sku=:sku",
-                dict(ref=ref, sku=sku),
-            )
-            batches_added.add(batch_id)
-            skus_added.add(sku)
-        postgres_session.commit()
-
-    yield _add_stock
-
-    for batch_id in batches_added:
-        postgres_session.execute(
-            "DELETE FROM allocations WHERE batch_id=:batch_id",
-            dict(batch_id=batch_id),
+def post_to_add_stock(url):
+    def _add_stock(reference, sku, qty, eta):
+        response = requests.post(
+            f"{url}/add_batch",
+            json={"reference": reference, "sku": sku, "qty": qty, "eta": eta},
         )
-        postgres_session.execute(
-            "DELETE FROM batches WHERE id=:batch_id",
-            dict(batch_id=batch_id),
-        )
-    for sku in skus_added:
-        postgres_session.execute(
-            "DELETE FROM order_lines WHERE sku=:sku",
-            dict(sku=sku),
-        )
-        postgres_session.commit()
+        assert response.status_code == 201
+
+    return _add_stock
 
 
 @pytest.fixture

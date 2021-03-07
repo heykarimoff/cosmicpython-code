@@ -1,11 +1,12 @@
-from flask import Flask, jsonify, request
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
 import config
-from domain import model
 from adapters import orm, repository
+from domain import model
+from flask import Flask, jsonify, request
 from service_layer import services
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 orm.start_mappers()
 Session = sessionmaker(bind=create_engine(config.get_postgres_uri()))
@@ -16,27 +17,36 @@ app = Flask(__name__)
 def add_batch_endpoint():
     session = Session()
     repo = repository.SqlAlchemyRepository(session)
-    batch = model.Batch(
-        reference=request.json["reference"],
-        sku=request.json["sku"],
-        qty=request.json["qty"],
-        eta=request.json.get("eta"),
-    )
-    services.add_batch(batch, repo, session)
+    eta = request.json.get("eta")
 
-    return {"message": "Created"}, 201
+    if eta is not None:
+        eta = datetime.fromisoformat(eta).date()
+
+    services.add_batch(
+        request.json["reference"],
+        request.json["sku"],
+        request.json["qty"],
+        eta=eta,
+        repo=repo,
+        session=session,
+    )
+
+    return "OK", 201
 
 
 @app.route("/allocate", methods=["POST"])
 def allocate_endpoint():
     session = Session()
     repo = repository.SqlAlchemyRepository(session)
-    line = model.OrderLine(
-        request.json["orderid"], request.json["sku"], request.json["qty"]
-    )
 
     try:
-        batchref = services.allocate(line, repo, session)
+        batchref = services.allocate(
+            request.json["orderid"],
+            request.json["sku"],
+            request.json["qty"],
+            repo,
+            session,
+        )
     except (model.OutOfStock, services.InvalidSku) as e:
         return {"message": str(e)}, 400
 
@@ -47,10 +57,13 @@ def allocate_endpoint():
 def deallocate_endpoint():
     session = Session()
     repo = repository.SqlAlchemyRepository(session)
-    line = model.OrderLine(
-        request.json["orderid"], request.json["sku"], request.json["qty"]
+
+    services.deallocate(
+        request.json["orderid"],
+        request.json["sku"],
+        request.json["qty"],
+        repo,
+        session,
     )
 
-    services.deallocate(line, repo, session)
-
-    return {"message": "Deallocated"}, 200
+    return "OK", 200

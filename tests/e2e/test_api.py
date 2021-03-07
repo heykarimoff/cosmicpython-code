@@ -26,11 +26,10 @@ def random_orderid(name=""):
 
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
-def test_add_batch():
+def test_add_batch(url):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
-    url = config.get_api_url()
 
     response = requests.post(
         f"{url}/add_batch",
@@ -56,21 +55,17 @@ def test_add_batch():
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_returns_200_and_allocated_batch(add_stock):
+def test_returns_200_and_allocated_batch(url, post_to_add_stock):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
     otherbatch = random_batchref(3)
-    add_stock(
-        [
-            (laterbatch, sku, 100, "2011-01-02"),
-            (earlybatch, sku, 100, "2011-01-01"),
-            (otherbatch, othersku, 100, None),
-        ]
-    )
+
+    post_to_add_stock(laterbatch, sku, 100, "2011-01-02")
+    post_to_add_stock(earlybatch, sku, 100, "2011-01-01")
+    post_to_add_stock(otherbatch, othersku, 100, None)
 
     data = {"orderid": random_orderid(), "sku": sku, "qty": 3}
-    url = config.get_api_url()
     response = requests.post(f"{url}/allocate", json=data)
 
     assert response.status_code == 201
@@ -78,20 +73,15 @@ def test_returns_200_and_allocated_batch(add_stock):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_retuns_400_and_out_of_stock_message(add_stock):
+def test_retuns_400_and_out_of_stock_message(url, post_to_add_stock):
     sku, small_batch, large_order = (
         random_sku(),
         random_batchref(),
         random_orderid(),
     )
-    add_stock(
-        [
-            (small_batch, sku, 10, "2011-01-01"),
-        ]
-    )
+    post_to_add_stock(small_batch, sku, 10, "2011-01-01")
 
     data = {"orderid": large_order, "sku": sku, "qty": 20}
-    url = config.get_api_url()
     response = requests.post(f"{url}/allocate", json=data)
 
     assert response.status_code == 400
@@ -99,11 +89,10 @@ def test_retuns_400_and_out_of_stock_message(add_stock):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_returns_400_invalid_sku_message():
+def test_returns_400_invalid_sku_message(url):
     unknown_sku, orderid = random_sku(), random_orderid()
 
     data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
-    url = config.get_api_url()
     response = requests.post(f"{url}/allocate", json=data)
 
     assert response.status_code == 400
@@ -111,11 +100,10 @@ def test_returns_400_invalid_sku_message():
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_deallocate(add_stock):
+def test_deallocate(url, post_to_add_stock):
     sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
     batch = random_batchref()
-    add_stock([(batch, sku, 100, "2011-01-01")])
-    url = config.get_api_url()
+    post_to_add_stock(batch, sku, 100, "2011-01-01")
 
     # fully allocate
     response = requests.post(
