@@ -20,10 +20,13 @@ logs:
 test: test-e2e test-unit
 
 test-e2e:
-	pytest -m e2e --tb=short
+	pytest -m e2e --tb=short tests/e2e
+
+test-integration:
+	pytest --tb=short tests/integration
 
 test-unit:
-	pytest -m "not e2e" --tb=short
+	pytest --tb=short tests/unit
 
 check-black:
 	black --line-length 80 --diff --check .

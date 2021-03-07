@@ -24,6 +24,7 @@ def random_orderid(name=""):
     return f"order-{name}-{random_suffix()}"
 
 
+@pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
 def test_add_batch():
     sku, othersku = random_sku(), random_sku("other")
