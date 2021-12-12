@@ -2,13 +2,11 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, NewType, Optional, Set
 
+from allocation.domain.events import OutOfStock
+
 Reference = NewType("Reference", str)
 Sku = NewType("Sku", str)
 Quantity = NewType("Quantity", int)
-
-
-class OutOfStock(Exception):
-    pass
 
 
 @dataclass(unsafe_hash=True)
@@ -71,6 +69,7 @@ class Product:
     def __init__(self, sku: Sku, batches: List[Batch]):
         self.sku = sku
         self.batches = batches
+        self.events = []  # type: List[Event]
 
     def __repr__(self):
         return f"<Product {self.sku}>"
@@ -92,7 +91,8 @@ class Product:
                 b for b in sorted(self.batches) if b.can_allocate(line)
             )
         except StopIteration:
-            raise OutOfStock(f"Out of stock for sku {line.sku}")
+            self.events.append(OutOfStock(line.sku))
+            return None
 
         batch.allocate(line)
 
