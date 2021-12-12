@@ -37,7 +37,8 @@ def allocate(
         if not is_valid_sku(line.sku, batches):
             raise InvalidSku(f"Invalid sku {line.sku}")
 
-        batchref = model.allocate(line, batches)
+        product = model.Product(sku, batches)
+        batchref = product.allocate(line)
         uow.commit()
 
     return batchref
@@ -49,5 +50,6 @@ def deallocate(
     line = model.OrderLine(orderid, sku, qty)
     with uow:
         batches = uow.batches.list()
-        model.deallocate(line, batches)
+        product = model.Product(sku, batches)
+        product.deallocate(line)
         uow.commit()
