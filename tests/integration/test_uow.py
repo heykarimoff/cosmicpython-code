@@ -4,6 +4,7 @@ from allocation.service_layer import unit_of_work
 
 
 def insert_batch(session, reference, sku, qty, eta):
+    session.execute("INSERT INTO products (sku) VALUES (:sku)", dict(sku=sku))
     session.execute(
         "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
         " VALUES (:ref, :sku, :qty, :eta)",
@@ -31,7 +32,7 @@ def test_uow_can_retrieve_a_batch_and_allocate_to_it(session_factory):
 
     uow = unit_of_work.SqlAlchemyUnitOfWork(session_factory)
     with uow:
-        batch = uow.batches.get(reference="batch1")
+        batch = uow.products.get(sku="HIPSTER-WORKBENCH")
         line = model.OrderLine("order1", "HIPSTER-WORKBENCH", 10)
         batch.allocate(line)
         uow.commit()

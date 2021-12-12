@@ -75,6 +75,17 @@ class Product:
     def __repr__(self):
         return f"<Product {self.sku}>"
 
+    def __hash__(self):
+        return hash(self.sku)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Product):
+            return False
+        return self.sku == other.sku and self.batches == other.batches
+
+    def __gt__(self, other) -> bool:
+        return len(self.batches) > len(other.batches)
+
     def allocate(self, line: OrderLine):
         try:
             batch = next(

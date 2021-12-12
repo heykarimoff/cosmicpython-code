@@ -11,7 +11,7 @@ DEFAULT_SESSION_FACTORY = sessionmaker(
 
 
 class AbstractUnitOfWork(abc.ABC):
-    batches: repository.AbstractRepository
+    products: repository.AbstractRepository
 
     def __enter__(self):
         pass
@@ -34,7 +34,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     def __enter__(self):
         self.session = self.session_factory()
-        self.batches = repository.SqlAlchemyRepository(self.session)
+        self.products = repository.SqlAlchemyRepository(self.session)
         return super().__enter__()
 
     def __exit__(self, *args):

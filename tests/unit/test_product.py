@@ -11,9 +11,9 @@ later = tomorrow + timedelta(days=10)
 def test_prefers_warehouse_batches_to_shipments():
     in_stock_batch = Batch("batch-001", "BIG-SOFA", qty=20, eta=None)
     shipment_batch = Batch("batch-002", "BIG-SOFA", qty=20, eta=today)
+    product = Product(sku="BIG-SOFA", batches=[in_stock_batch, shipment_batch])
     line = OrderLine("order-123", "BIG-SOFA", 5)
 
-    product = Product(sku="BIG-SOFA", batches=[in_stock_batch, shipment_batch])
     product.allocate(line)
 
     assert in_stock_batch.available_quantity == 15
@@ -23,20 +23,22 @@ def test_prefers_warehouse_batches_to_shipments():
 def test_returns_allocated_batch_reference():
     in_stock_batch = Batch("batch-001", "BIG-SOFA", qty=20, eta=None)
     shipment_batch = Batch("batch-002", "BIG-SOFA", qty=20, eta=today)
+    product = Product(sku="BIG-SOFA", batches=[in_stock_batch, shipment_batch])
     line = OrderLine("order-123", "BIG-SOFA", 5)
 
-    product = Product(sku="BIG-SOFA", batches=[in_stock_batch, shipment_batch])
     allocation = product.allocate(line)
 
     assert allocation == in_stock_batch.reference
 
 
 def test_prefers_earlier_batches():
-    tomorrows_batch = Batch("batch-001", "BIG-SOFA", qty=20, eta=tomorrow)
-    upcoming_batch = Batch("batch-001", "BIG-SOFA", qty=20, eta=later)
-    line = OrderLine("order-123", "BIG-SOFA", 5)
+    tomorrows_batch = Batch("batch-001", "MINI-SPOON", qty=20, eta=tomorrow)
+    upcoming_batch = Batch("batch-001", "MINI-SPOON", qty=20, eta=later)
+    product = Product(
+        sku="MINI-SPOON", batches=[tomorrows_batch, upcoming_batch]
+    )
+    line = OrderLine("order-123", "MINI-SPOON", 5)
 
-    product = Product(sku="BIG-SOFA", batches=[tomorrows_batch, upcoming_batch])
     allocation = product.allocate(line)
 
     assert allocation == tomorrows_batch.reference

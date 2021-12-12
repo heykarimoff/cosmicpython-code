@@ -27,6 +27,26 @@ def test_orderline_mapper_can_save_lines(session):
     assert rows == [("order1", "DECORATIVE-WIDGET", 12)]
 
 
+def test_retrieving_products(session):
+    session.execute(
+        "INSERT INTO products (sku) VALUES ('RED-CHAIR'), ('RED-TABLE')"
+    )
+    expected = [
+        model.Product("RED-CHAIR", []),
+        model.Product("RED-TABLE", []),
+    ]
+
+    assert session.query(model.Product).all() == expected
+
+
+def test_saving_products(session):
+    product = model.Product("sku1", [])
+    session.add(product)
+    session.commit()
+    rows = list(session.execute('SELECT sku FROM "products"'))
+    assert rows == [("sku1",)]
+
+
 def test_retrieving_batches(session):
     session.execute(
         "INSERT INTO batches (reference, sku, _purchased_quantity, eta)"
