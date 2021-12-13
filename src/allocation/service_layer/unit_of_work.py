@@ -2,6 +2,7 @@ import abc
 
 from allocation import config
 from allocation.adapters import repository
+from allocation.service_layer import messagebus
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -20,12 +21,25 @@ class AbstractUnitOfWork(abc.ABC):
         self.rollback()
 
     @abc.abstractmethod
-    def commit(self):
+    def _commit(self):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def rollback(self):
+    def _rollback(self):
         raise NotImplementedError
+
+    def commit(self):
+        self._commit()
+        self.publish_events()
+
+    def rollback(self):
+        self._rollback()
+
+    def publish_events(self):
+        for product in self.products.seen:
+            while product.events:
+                event = product.events.pop(0)
+                messagebus.handle(event)
 
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
@@ -34,15 +48,17 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
 
     def __enter__(self):
         self.session = self.session_factory()
-        self.products = repository.SqlAlchemyRepository(self.session)
+        self.products = repository.TrackingRepository(
+            repository.SqlAlchemyRepository(self.session)
+        )
         return super().__enter__()
 
     def __exit__(self, *args):
         super().__exit__(*args)
         self.session.close()
 
-    def commit(self):
+    def _commit(self):
         self.session.commit()
 
-    def rollback(self):
+    def _rollback(self):
         self.session.rollback()

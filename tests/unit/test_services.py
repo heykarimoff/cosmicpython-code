@@ -6,7 +6,7 @@ from allocation.domain import model
 from allocation.service_layer import services, unit_of_work
 
 
-class FakeRepository(repository.AbstractRepository):
+class FakeRepository:
     def __init__(self, products: List[model.Product] = None):
         self._products = products or set()
 
@@ -27,13 +27,13 @@ class FakeRepository(repository.AbstractRepository):
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
     def __init__(self):
-        self.products = FakeRepository()
+        self.products = repository.TrackingRepository(FakeRepository())
         self.committed = False
 
-    def commit(self):
+    def _commit(self):
         self.committed = True
 
-    def rollback(self):
+    def _rollback(self):
         pass
 
 

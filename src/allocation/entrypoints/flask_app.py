@@ -42,6 +42,9 @@ def allocate_endpoint():
     except services.InvalidSku as e:
         return {"message": str(e)}, 400
 
+    if not batchref:
+        return {"message": "Out of stock"}, 400
+
     return jsonify({"batchref": batchref}), 201
 
 

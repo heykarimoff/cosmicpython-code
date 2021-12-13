@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, NewType, Optional, Set
 
-from allocation.domain.events import OutOfStock
+from allocation.domain.events import Event, OutOfStock
 
 Reference = NewType("Reference", str)
 Sku = NewType("Sku", str)
@@ -66,10 +66,12 @@ class Batch:
 
 
 class Product:
+    events: List[Event] = []
+
     def __init__(self, sku: Sku, batches: List[Batch]):
         self.sku = sku
         self.batches = batches
-        self.events = []  # type: List[Event]
+        self.events = list()  # type: List[Event]
 
     def __repr__(self):
         return f"<Product {self.sku}>"
