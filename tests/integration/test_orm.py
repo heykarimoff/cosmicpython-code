@@ -90,7 +90,8 @@ def test_saving_allocations(session):
 
 def test_retrieving_allocations(session):
     session.execute(
-        'INSERT INTO order_lines (orderid, sku, qty) VALUES ("order1", "sku1", 12)'
+        "INSERT INTO order_lines"
+        '(orderid, sku, qty) VALUES ("order1", "sku1", 12)'
     )
     [[olid]] = session.execute(
         "SELECT id FROM order_lines WHERE orderid=:orderid AND sku=:sku",

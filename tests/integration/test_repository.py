@@ -42,7 +42,8 @@ def insert_product_batch(session, batch_id):
         dict(batch_id=batch_id),
     )
     [[batch_id]] = session.execute(
-        'SELECT id FROM batches WHERE reference=:batch_id AND sku="GENERIC-SOFA"',
+        "SELECT id FROM batches"
+        'WHERE reference=:batch_id AND sku="GENERIC-SOFA"',
         dict(batch_id=batch_id),
     )
     return batch_id
@@ -55,7 +56,8 @@ def insert_batch(session, batch_id):
         dict(batch_id=batch_id),
     )
     [[batch_id]] = session.execute(
-        'SELECT id FROM batches WHERE reference=:batch_id AND sku="GENERIC-TABLE"',
+        "SELECT id FROM batches"
+        'WHERE reference=:batch_id AND sku="GENERIC-TABLE"',
         dict(batch_id=batch_id),
     )
     return batch_id

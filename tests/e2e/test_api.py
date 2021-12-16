@@ -2,7 +2,6 @@ import uuid
 
 import pytest
 import requests
-from allocation import config
 
 pytestmark = pytest.mark.e2e
 
@@ -84,7 +83,7 @@ def test_retuns_400_and_out_of_stock_message(url, post_to_add_stock):
     response = requests.post(f"{url}/allocate", json=data)
 
     assert response.status_code == 400
-    assert response.json()["message"] == f"Out of stock"
+    assert response.json()["message"] == "Out of stock"
 
 
 @pytest.mark.usefixtures("restart_api")
