@@ -50,9 +50,14 @@ def allocate_endpoint():
 @app.route("/deallocate", methods=["POST"])
 def deallocate_endpoint():
     uow = unit_of_work.SqlAlchemyUnitOfWork()
-
-    services.deallocate(
-        request.json["orderid"], request.json["sku"], request.json["qty"], uow
-    )
+    try:
+        services.deallocate(
+            request.json["orderid"],
+            request.json["sku"],
+            request.json["qty"],
+            uow,
+        )
+    except services.InvalidSku as e:
+        return {"message": str(e)}, 400
 
     return "OK", 200
