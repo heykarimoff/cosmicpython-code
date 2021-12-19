@@ -2,8 +2,8 @@ from typing import List
 
 import pytest
 from allocation.adapters import repository
-from allocation.domain import model
-from allocation.service_layer import services, unit_of_work
+from allocation.domain import events, model
+from allocation.service_layer import handlers, unit_of_work
 
 
 class FakeRepository:
@@ -39,10 +39,10 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
 
 def test_add_batch_for_new_product():
     uow = FakeUnitOfWork()
-
-    services.add_batch(
-        reference="batch1", sku="COMPLICATED-LAMP", qty=100, eta=None, uow=uow
+    event = events.BatchCreated(
+        reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
+    handlers.add_batch(event=event, uow=uow)
 
     assert uow.products.get("COMPLICATED-LAMP") is not None
     product = uow.products.get("COMPLICATED-LAMP")
@@ -52,13 +52,14 @@ def test_add_batch_for_new_product():
 
 def test_add_batch_for_existing_product():
     uow = FakeUnitOfWork()
-
-    services.add_batch(
-        reference="batch1", sku="CRUNCHY-ARMCHAIR", qty=10, eta=None, uow=uow
+    event1 = events.BatchCreated(
+        reference="batch1", sku="CRUNCHY-ARMCHAIR", qty=10
     )
-    services.add_batch(
-        reference="batch2", sku="CRUNCHY-ARMCHAIR", qty=15, eta=None, uow=uow
+    event2 = events.BatchCreated(
+        reference="batch2", sku="CRUNCHY-ARMCHAIR", qty=15
     )
+    handlers.add_batch(event=event1, uow=uow)
+    handlers.add_batch(event=event2, uow=uow)
 
     assert uow.products.get("CRUNCHY-ARMCHAIR") is not None
     product = uow.products.get("CRUNCHY-ARMCHAIR")
@@ -69,11 +70,15 @@ def test_add_batch_for_existing_product():
 
 def test_allocate_returns_allocation():
     uow = FakeUnitOfWork()
-    services.add_batch("batch1", "COMPLICATED-LAMP", 100, None, uow)
-
-    result = services.allocate(
-        orderid="order1", sku="COMPLICATED-LAMP", qty=10, uow=uow
+    event = events.BatchCreated(
+        reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
+    handlers.add_batch(event, uow)
+
+    event = events.AllocationRequired(
+        orderid="order1", sku="COMPLICATED-LAMP", qty=10
+    )
+    result = handlers.allocate(event=event, uow=uow)
 
     assert result == "batch1"
     assert uow.committed
@@ -81,30 +86,39 @@ def test_allocate_returns_allocation():
 
 def test_allocate_errors_for_invalid_sku():
     uow = FakeUnitOfWork()
-    services.add_batch("batch1", "AREALSKU", 100, None, uow)
+    event = events.BatchCreated(reference="batch1", sku="AREALSKU", qty=100)
+    handlers.add_batch(event, uow)
 
     with pytest.raises(
-        services.InvalidSku, match="Invalid sku NON-EXISTENTSKU"
+        handlers.InvalidSku, match="Invalid sku NON-EXISTENTSKU"
     ):
-        services.allocate(
-            orderid="order1", sku="NON-EXISTENTSKU", qty=10, uow=uow
+        event = events.AllocationRequired(
+            orderid="order1", sku="NON-EXISTENTSKU", qty=10
         )
+        handlers.allocate(event=event, uow=uow)
 
 
 def test_deallocate():
     uow = FakeUnitOfWork()
-    services.add_batch("batch1", "COMPLICATED-LAMP", 100, None, uow)
-
-    result = services.allocate(
-        orderid="order1", sku="COMPLICATED-LAMP", qty=10, uow=uow
+    event = events.BatchCreated(
+        reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
+    handlers.add_batch(event, uow)
+
+    event = events.AllocationRequired(
+        orderid="order1", sku="COMPLICATED-LAMP", qty=10
+    )
+    result = handlers.allocate(event=event, uow=uow)
     assert result == "batch1"
     product = uow.products.get("COMPLICATED-LAMP")
     batch = product.batches[0]
     assert batch.reference == "batch1"
     assert batch.allocated_quaitity == 10
 
-    services.deallocate("order1", "COMPLICATED-LAMP", 10, uow)
+    event = events.DeallocationRequired(
+        orderid="order1", sku="COMPLICATED-LAMP", qty=10
+    )
+    handlers.deallocate(event, uow)
 
     assert batch.allocated_quaitity == 0
     assert uow.committed

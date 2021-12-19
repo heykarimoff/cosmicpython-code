@@ -115,7 +115,7 @@ def test_deallocate(url, post_to_add_stock):
         f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 400, response.text
 
     # deallocate
     response = requests.post(

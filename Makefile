@@ -20,13 +20,13 @@ logs:
 test: up test-e2e test-integration test-unit
 
 test-e2e:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e -v -s
 
 test-integration:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration -v -s
 
 test-unit:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit -v -s
 
 check-black:
 	black --line-length 80 --diff --check .

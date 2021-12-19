@@ -2,7 +2,6 @@ import abc
 
 from allocation import config
 from allocation.adapters import repository
-from allocation.service_layer import messagebus
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -30,16 +29,14 @@ class AbstractUnitOfWork(abc.ABC):
 
     def commit(self):
         self._commit()
-        self.publish_events()
 
     def rollback(self):
         self._rollback()
 
-    def publish_events(self):
+    def collect_new_events(self):
         for product in self.products.seen:
             while product.events:
-                event = product.events.pop(0)
-                messagebus.handle(event)
+                yield product.events.pop(0)
 
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
