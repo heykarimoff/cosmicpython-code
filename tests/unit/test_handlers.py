@@ -1,9 +1,10 @@
+from datetime import date
 from typing import List
 
 import pytest
 from allocation.adapters import repository
 from allocation.domain import events, model
-from allocation.service_layer import handlers, unit_of_work
+from allocation.service_layer import handlers, messagebus, unit_of_work
 
 
 class FakeRepository:
@@ -15,6 +16,19 @@ class FakeRepository:
 
     def get(self, sku: model.Sku) -> model.Product:
         return next((item for item in self._products if item.sku == sku), None)
+
+    def get_by_batch_reference(
+        self, reference: model.Reference
+    ) -> model.Product:
+        return next(
+            (
+                item
+                for item in self._products
+                for batch in item.batches
+                if batch.reference == reference
+            ),
+            None,
+        )
 
     def list(self):
         return list(self._products)
@@ -122,3 +136,52 @@ def test_deallocate():
 
     assert batch.allocated_quaitity == 0
     assert uow.committed
+
+
+def test_changes_available_quantity():
+    uow = FakeUnitOfWork()
+    event = events.BatchCreated(
+        reference="batch1", sku="ADORABLE-SETTEE", qty=100
+    )
+    messagebus.handle(event, uow)
+    [batch] = uow.products.get("ADORABLE-SETTEE").batches
+
+    assert batch.available_quantity == 100
+
+    event = events.BatchQuantityChanged(reference="batch1", qty=50)
+    messagebus.handle(event, uow)
+
+    assert batch.available_quantity == 50
+
+
+def test_realocates_batch_if_nessesary_when_available_quantity_reduces():
+    uow = FakeUnitOfWork()
+    event_history = [
+        events.BatchCreated(
+            reference="batch1", sku="INDIFFERENT-TABLE", qty=100
+        ),
+        events.BatchCreated(
+            reference="batch2",
+            sku="INDIFFERENT-TABLE",
+            qty=100,
+            eta=date.today(),
+        ),
+        events.AllocationRequired(
+            orderid="order1", sku="INDIFFERENT-TABLE", qty=50
+        ),
+        events.AllocationRequired(
+            orderid="order2", sku="INDIFFERENT-TABLE", qty=50
+        ),
+    ]
+    for event in event_history:
+        messagebus.handle(event, uow)
+    [batch1, batch2] = uow.products.get("INDIFFERENT-TABLE").batches
+
+    assert batch1.available_quantity == 0
+    assert batch2.available_quantity == 100
+
+    event = events.BatchQuantityChanged(reference="batch1", qty=55)
+    messagebus.handle(event, uow)
+
+    assert batch1.available_quantity == 5
+    assert batch2.available_quantity == 50

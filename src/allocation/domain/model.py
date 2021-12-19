@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, NewType, Optional, Set
 
-from allocation.domain.events import Event, OutOfStock
+from allocation.domain.events import AllocationRequired, Event, OutOfStock
 
 Reference = NewType("Reference", str)
 Sku = NewType("Sku", str)
@@ -64,6 +64,10 @@ class Batch:
     def can_allocate(self, line: OrderLine) -> bool:
         return self.sku == line.sku and line.qty <= self.available_quantity
 
+    def deallocate_one(self) -> Optional[OrderLine]:
+        if self._allocations:
+            return self._allocations.pop()
+
 
 class Product:
     events: List[Event] = []
@@ -103,3 +107,12 @@ class Product:
     def deallocate(self, line: OrderLine):
         for batch in self.batches:
             batch.deallocate(line)
+
+    def change_batch_quantity(self, reference: Reference, qty: Quantity):
+        batch = next(b for b in self.batches if b.reference == reference)
+        batch._purchased_quantity = qty
+        while batch.allocated_quaitity > qty:
+            line = batch.deallocate_one()
+            self.events.append(
+                AllocationRequired(line.orderid, line.sku, line.qty)
+            )

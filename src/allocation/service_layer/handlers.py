@@ -22,6 +22,13 @@ def add_batch(event: events.BatchCreated, uow: unit_of_work.AbstractUnitOfWork):
         uow.commit()
 
 
+def change_batch_quantity(event: events.BatchQuantityChanged, uow):
+    with uow:
+        product = uow.products.get_by_batch_reference(reference=event.reference)
+        product.change_batch_quantity(reference=event.reference, qty=event.qty)
+        uow.commit()
+
+
 def allocate(
     event: events.AllocationRequired, uow: unit_of_work.AbstractUnitOfWork
 ) -> str:

@@ -17,6 +17,7 @@ def handle(event: events.Event, uow: unit_of_work.AbstractUnitOfWork):
 
 HANDLERS = {
     events.BatchCreated: [handlers.add_batch],
+    events.BatchQuantityChanged: [handlers.change_batch_quantity],
     events.AllocationRequired: [handlers.allocate],
     events.DeallocationRequired: [handlers.deallocate],
     events.OutOfStock: [handlers.send_out_of_stock_notification],

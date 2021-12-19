@@ -15,6 +15,12 @@ class AbstractRepository(Protocol):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def get_by_batch_reference(
+        self, reference: model.Reference
+    ) -> model.Product:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def list(self) -> List[model.Product]:
         raise NotImplementedError
 
@@ -36,6 +42,14 @@ class TrackingRepository:
             self.seen.add(product)
         return product
 
+    def get_by_batch_reference(
+        self, reference: model.Reference
+    ) -> model.Product:
+        product = self._repo.get_by_batch_reference(reference)
+        if product:
+            self.seen.add(product)
+        return product
+
     def list(self) -> List[model.Product]:
         return self._repo.list()
 
@@ -49,6 +63,16 @@ class SqlAlchemyRepository:
 
     def get(self, sku: model.Sku) -> model.Product:
         return self.session.query(model.Product).filter_by(sku=sku).first()
+
+    def get_by_batch_reference(
+        self, reference: model.Reference
+    ) -> model.Product:
+        return (
+            self.session.query(model.Product)
+            .join(model.Batch)
+            .filter(model.Batch.reference == reference)
+            .first()
+        )
 
     def list(self):
         return self.session.query(model.Product).all()
