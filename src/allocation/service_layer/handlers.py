@@ -2,7 +2,7 @@ from datetime import date
 from typing import Optional
 
 from allocation.adapters import email
-from allocation.domain import events, model
+from allocation.domain import commands, events, model
 from allocation.service_layer import unit_of_work
 
 
@@ -10,9 +10,13 @@ class InvalidSku(Exception):
     pass
 
 
-def add_batch(event: events.BatchCreated, uow: unit_of_work.AbstractUnitOfWork):
-    sku = event.sku
-    batch = model.Batch(event.reference, event.sku, event.qty, event.eta)
+def add_batch(
+    message: commands.CreateBatch, uow: unit_of_work.AbstractUnitOfWork
+):
+    sku = message.sku
+    batch = model.Batch(
+        message.reference, message.sku, message.qty, message.eta
+    )
     with uow:
         product = uow.products.get(sku=sku)
         if product is None:
@@ -22,20 +26,24 @@ def add_batch(event: events.BatchCreated, uow: unit_of_work.AbstractUnitOfWork):
         uow.commit()
 
 
-def change_batch_quantity(event: events.BatchQuantityChanged, uow):
+def change_batch_quantity(message: commands.ChangeBatchQuantity, uow):
     with uow:
-        product = uow.products.get_by_batch_reference(reference=event.reference)
-        product.change_batch_quantity(reference=event.reference, qty=event.qty)
+        product = uow.products.get_by_batch_reference(
+            reference=message.reference
+        )
+        product.change_batch_quantity(
+            reference=message.reference, qty=message.qty
+        )
         uow.commit()
 
 
 def allocate(
-    event: events.AllocationRequired, uow: unit_of_work.AbstractUnitOfWork
+    message: commands.Allocate, uow: unit_of_work.AbstractUnitOfWork
 ) -> str:
-    line = model.OrderLine(event.orderid, event.sku, event.qty)
+    line = model.OrderLine(message.orderid, message.sku, message.qty)
 
     with uow:
-        product = uow.products.get(sku=event.sku)
+        product = uow.products.get(sku=message.sku)
 
         if product is None:
             raise InvalidSku(f"Invalid sku {line.sku}")
@@ -47,11 +55,11 @@ def allocate(
 
 
 def deallocate(
-    event: events.DeallocationRequired, uow: unit_of_work.AbstractUnitOfWork
+    message: commands.Deallocate, uow: unit_of_work.AbstractUnitOfWork
 ) -> None:
-    line = model.OrderLine(event.orderid, event.sku, event.qty)
+    line = model.OrderLine(message.orderid, message.sku, message.qty)
     with uow:
-        product = uow.products.get(sku=event.sku)
+        product = uow.products.get(sku=message.sku)
 
         if product is None:
             raise InvalidSku(f"Invalid sku {line.sku}")
@@ -61,6 +69,6 @@ def deallocate(
 
 
 def send_out_of_stock_notification(
-    event: events.OutOfStock, uow: unit_of_work.AbstractUnitOfWork
+    message: events.OutOfStock, uow: unit_of_work.AbstractUnitOfWork
 ):
-    email.send_mail("stock-admin@made.com", f"Out of stock: {event.sku}")
+    email.send_mail("stock-admin@made.com", f"Out of stock: {message.sku}")

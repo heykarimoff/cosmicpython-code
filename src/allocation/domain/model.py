@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import List, NewType, Optional, Set
 
-from allocation.domain.events import AllocationRequired, Event, OutOfStock
+from allocation.domain.commands import Allocate
+from allocation.domain.events import Event, OutOfStock
 
 Reference = NewType("Reference", str)
 Sku = NewType("Sku", str)
@@ -113,6 +114,4 @@ class Product:
         batch._purchased_quantity = qty
         while batch.allocated_quaitity > qty:
             line = batch.deallocate_one()
-            self.events.append(
-                AllocationRequired(line.orderid, line.sku, line.qty)
-            )
+            self.events.append(Allocate(line.orderid, line.sku, line.qty))
