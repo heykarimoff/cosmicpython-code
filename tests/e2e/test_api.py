@@ -38,7 +38,7 @@ def test_add_batch(url):
         },
     )
 
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
 
     response = requests.post(
         f"{url}/add_batch",
@@ -49,7 +49,7 @@ def test_add_batch(url):
             "eta": "2021-01-01",
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
 
 
 @pytest.mark.usefixtures("restart_api")
@@ -66,7 +66,7 @@ def test_returns_200_and_allocated_batch(url, post_to_add_stock):
     data = {"orderid": random_orderid(), "sku": sku, "qty": 3}
     response = requests.post(f"{url}/allocate", json=data)
 
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     assert response.json()["batchref"] == earlybatch
 
 
@@ -82,7 +82,7 @@ def test_retuns_400_and_out_of_stock_message(url, post_to_add_stock):
     data = {"orderid": large_order, "sku": sku, "qty": 20}
     response = requests.post(f"{url}/allocate", json=data)
 
-    assert response.status_code == 400
+    assert response.status_code == 400, response.text
     assert response.json()["message"] == "Out of stock"
 
 
@@ -93,7 +93,7 @@ def test_returns_400_invalid_sku_message(url):
     data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
     response = requests.post(f"{url}/allocate", json=data)
 
-    assert response.status_code == 400
+    assert response.status_code == 400, response.text
     assert response.json()["message"] == f"Invalid sku {unknown_sku}"
 
 

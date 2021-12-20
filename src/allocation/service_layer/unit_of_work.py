@@ -1,7 +1,9 @@
 import abc
+from typing import Generator, Optional
 
 from allocation import config
 from allocation.adapters import repository
+from allocation.domain import events
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -33,7 +35,9 @@ class AbstractUnitOfWork(abc.ABC):
     def rollback(self):
         self._rollback()
 
-    def collect_new_events(self):
+    def collect_new_events(
+        self,
+    ) -> Optional[Generator[events.Event, None, None]]:
         for product in self.products.seen:
             while product.events:
                 yield product.events.pop(0)

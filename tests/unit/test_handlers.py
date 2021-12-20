@@ -56,7 +56,8 @@ def test_add_batch_for_new_product():
     event = events.BatchCreated(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
-    handlers.add_batch(event=event, uow=uow)
+
+    messagebus.handle(event, uow)
 
     assert uow.products.get("COMPLICATED-LAMP") is not None
     product = uow.products.get("COMPLICATED-LAMP")
@@ -66,14 +67,13 @@ def test_add_batch_for_new_product():
 
 def test_add_batch_for_existing_product():
     uow = FakeUnitOfWork()
-    event1 = events.BatchCreated(
-        reference="batch1", sku="CRUNCHY-ARMCHAIR", qty=10
-    )
-    event2 = events.BatchCreated(
-        reference="batch2", sku="CRUNCHY-ARMCHAIR", qty=15
-    )
-    handlers.add_batch(event=event1, uow=uow)
-    handlers.add_batch(event=event2, uow=uow)
+    event_history = [
+        events.BatchCreated(reference="batch1", sku="CRUNCHY-ARMCHAIR", qty=10),
+        events.BatchCreated(reference="batch2", sku="CRUNCHY-ARMCHAIR", qty=15),
+    ]
+
+    for event in event_history:
+        messagebus.handle(event, uow)
 
     assert uow.products.get("CRUNCHY-ARMCHAIR") is not None
     product = uow.products.get("CRUNCHY-ARMCHAIR")
@@ -87,21 +87,21 @@ def test_allocate_returns_allocation():
     event = events.BatchCreated(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
-    handlers.add_batch(event, uow)
+    messagebus.handle(event, uow)
 
     event = events.AllocationRequired(
         orderid="order1", sku="COMPLICATED-LAMP", qty=10
     )
-    result = handlers.allocate(event=event, uow=uow)
+    [batchref] = messagebus.handle(event, uow)
 
-    assert result == "batch1"
+    assert batchref == "batch1"
     assert uow.committed
 
 
 def test_allocate_errors_for_invalid_sku():
     uow = FakeUnitOfWork()
     event = events.BatchCreated(reference="batch1", sku="AREALSKU", qty=100)
-    handlers.add_batch(event, uow)
+    messagebus.handle(event, uow)
 
     with pytest.raises(
         handlers.InvalidSku, match="Invalid sku NON-EXISTENTSKU"
@@ -109,7 +109,7 @@ def test_allocate_errors_for_invalid_sku():
         event = events.AllocationRequired(
             orderid="order1", sku="NON-EXISTENTSKU", qty=10
         )
-        handlers.allocate(event=event, uow=uow)
+        messagebus.handle(event, uow)
 
 
 def test_deallocate():
@@ -117,13 +117,13 @@ def test_deallocate():
     event = events.BatchCreated(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
-    handlers.add_batch(event, uow)
+    messagebus.handle(event, uow)
 
     event = events.AllocationRequired(
         orderid="order1", sku="COMPLICATED-LAMP", qty=10
     )
-    result = handlers.allocate(event=event, uow=uow)
-    assert result == "batch1"
+    [batchref] = messagebus.handle(event, uow)
+    assert batchref == "batch1"
     product = uow.products.get("COMPLICATED-LAMP")
     batch = product.batches[0]
     assert batch.reference == "batch1"
@@ -132,7 +132,7 @@ def test_deallocate():
     event = events.DeallocationRequired(
         orderid="order1", sku="COMPLICATED-LAMP", qty=10
     )
-    handlers.deallocate(event, uow)
+    messagebus.handle(event, uow)
 
     assert batch.allocated_quaitity == 0
     assert uow.committed
