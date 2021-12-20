@@ -3,6 +3,7 @@ from typing import Any, List, Union
 
 from allocation.domain import commands, events
 from allocation.service_layer import handlers, unit_of_work
+from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
 Message = Union[commands.Command, events.Event]
 logger = logging.getLogger(__name__)
@@ -31,11 +32,15 @@ def handle_event(
 ) -> None:
     for handler in EVENT_HANDLERS[type(event)]:
         try:
-            logger.debug(f"Handling event: {event}")
-            handler(event, uow)
-            queue.extend(uow.collect_new_events())
-        except Exception:
-            logger.exception(f"Error handling event: {event}")
+            for attempt in Retrying(
+                stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2)
+            ):
+                with attempt:
+                    logger.debug(f"Handling event: {event}")
+                    handler(event, uow)
+                    queue.extend(uow.collect_new_events())
+        except RetryError as retry_failure:
+            logger.error(f"Retry error: {retry_failure}")
             continue
 
 
