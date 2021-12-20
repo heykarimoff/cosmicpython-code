@@ -1,9 +1,11 @@
+import logging
 from typing import Union
 
 from allocation.domain import commands, events
 from allocation.service_layer import handlers, unit_of_work
 
 Message = Union[commands.Command, events.Event]
+logger = logging.getLogger(__name__)
 
 
 def handle(message: Message, uow: unit_of_work.AbstractUnitOfWork):
@@ -13,12 +15,23 @@ def handle(message: Message, uow: unit_of_work.AbstractUnitOfWork):
         message = queue.pop(0)
         if isinstance(message, events.Event):
             for handler in EVENT_HANDLERS[type(message)]:
-                results.append(handler(message, uow))
-                queue.extend(uow.collect_new_events())
+                try:
+                    logger.debug(f"Handling event: {message}")
+                    handler(message, uow)
+                    queue.extend(uow.collect_new_events())
+                except Exception:
+                    logger.exception(f"Error handling event: {message}")
+                    continue
         elif isinstance(message, commands.Command):
-            handler = COMMAND_HANDLERS[type(message)]
-            results.append(handler(message, uow))
-            queue.extend(uow.collect_new_events())
+            try:
+                logger.debug(f"Handling command: {message}")
+                handler = COMMAND_HANDLERS[type(message)]
+                result = handler(message, uow)
+                results.append(result)
+                queue.extend(uow.collect_new_events())
+            except Exception:
+                logger.exception(f"Error handling command: {message}")
+                raise
         else:
             raise TypeError(f"Unknown message type {type(message)}")
 
