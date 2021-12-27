@@ -76,7 +76,7 @@ class Product:
     def __init__(self, sku: Sku, batches: List[Batch]):
         self.sku = sku
         self.batches = batches
-        self.events = list()  # type: List[Event]
+        self.events = []  # type: List[Event]
 
     def __repr__(self):
         return f"<Product {self.sku}>"
