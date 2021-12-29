@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from allocation.adapters import orm
-from allocation.domain import commands, events
+from allocation.domain import commands
 from allocation.service_layer import handlers, messagebus, unit_of_work
 from flask import Flask, jsonify, request
 
@@ -55,7 +55,7 @@ def deallocate_endpoint():
         message = commands.Deallocate(
             request.json["orderid"], request.json["sku"], request.json["qty"]
         )
-        results = messagebus.handle(message, uow)
+        messagebus.handle(message, uow)
     except handlers.InvalidSku as e:
         return {"message": str(e)}, 400
 

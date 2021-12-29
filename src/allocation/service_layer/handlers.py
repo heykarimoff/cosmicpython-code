@@ -1,6 +1,3 @@
-from datetime import date
-from typing import Optional
-
 from allocation.adapters import email
 from allocation.domain import commands, events, model
 from allocation.service_layer import unit_of_work

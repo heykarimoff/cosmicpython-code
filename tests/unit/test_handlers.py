@@ -3,7 +3,7 @@ from typing import List
 
 import pytest
 from allocation.adapters import repository
-from allocation.domain import commands, events, model
+from allocation.domain import commands, model
 from allocation.service_layer import handlers, messagebus, unit_of_work
 
 
