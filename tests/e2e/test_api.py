@@ -1,30 +1,12 @@
-import uuid
-
 import pytest
 import requests
 
 pytestmark = pytest.mark.e2e
 
 
-def random_suffix():
-    return uuid.uuid4().hex[:6]
-
-
-def random_sku(name=""):
-    return f"sku-{name}-{random_suffix()}"
-
-
-def random_batchref(name=""):
-    return f"batch-{name}-{random_suffix()}"
-
-
-def random_orderid(name=""):
-    return f"order-{name}-{random_suffix()}"
-
-
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
-def test_add_batch(url):
+def test_add_batch(url, random_sku, random_batchref):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
@@ -53,7 +35,9 @@ def test_add_batch(url):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_returns_200_and_allocated_batch(url, post_to_add_stock):
+def test_returns_200_and_allocated_batch(
+    url, post_to_add_stock, random_sku, random_batchref, random_orderid
+):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
@@ -71,7 +55,9 @@ def test_returns_200_and_allocated_batch(url, post_to_add_stock):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_retuns_400_and_out_of_stock_message(url, post_to_add_stock):
+def test_retuns_400_and_out_of_stock_message(
+    url, post_to_add_stock, random_sku, random_batchref, random_orderid
+):
     sku, small_batch, large_order = (
         random_sku(),
         random_batchref(),
@@ -87,7 +73,7 @@ def test_retuns_400_and_out_of_stock_message(url, post_to_add_stock):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_returns_400_invalid_sku_message(url):
+def test_returns_400_invalid_sku_message(url, random_sku, random_orderid):
     unknown_sku, orderid = random_sku(), random_orderid()
 
     data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
@@ -98,7 +84,9 @@ def test_returns_400_invalid_sku_message(url):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_deallocate(url, post_to_add_stock):
+def test_deallocate(
+    url, post_to_add_stock, random_sku, random_batchref, random_orderid
+):
     sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
     batch = random_batchref()
     post_to_add_stock(batch, sku, 100, "2011-01-01")

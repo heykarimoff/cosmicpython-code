@@ -1,4 +1,5 @@
 import time
+import uuid
 from pathlib import Path
 
 import pytest
@@ -95,3 +96,35 @@ def restart_api():
     ).touch()
     time.sleep(0.5)
     wait_for_webapp_to_come_up()
+
+
+@pytest.fixture
+def random_suffix():
+    def _random_suffix():
+        return uuid.uuid4().hex[:6]
+
+    return _random_suffix
+
+
+@pytest.fixture
+def random_sku(random_suffix):
+    def _random_sku(name=""):
+        return f"sku-{name}-{random_suffix()}"
+
+    return _random_sku
+
+
+@pytest.fixture
+def random_batchref(random_suffix):
+    def _random_batchref(name=""):
+        return f"batch-{name}-{random_suffix()}"
+
+    return _random_batchref
+
+
+@pytest.fixture
+def random_orderid(random_suffix):
+    def _random_orderid(name=""):
+        return f"order-{name}-{random_suffix()}"
+
+    return _random_orderid
