@@ -112,6 +112,15 @@ def post_to_allocate(url):
     return _allocate
 
 
+@pytest.fixture
+def get_allocation(url):
+    def _get_allocation(orderid):
+        response = requests.get(f"{url}/allocations/{orderid}")
+        return response
+
+    return _get_allocation
+
+
 @pytest.fixture(scope="session")
 def redis_client():
     return Redis(**config.get_redis_host_and_port())

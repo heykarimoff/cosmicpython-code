@@ -35,12 +35,19 @@ def test_add_batch(url, random_sku, random_batchref):
         },
     )
     assert response.status_code == 201, response.text
+    assert response.json()["message"] == "OK"
 
 
 @pytest.mark.usefixtures("restart_api")
 def test_allocate_returns_200_and_allocated_batchref(
-    url, post_to_add_batch, random_sku, random_batchref, random_orderid
+    url,
+    post_to_add_batch,
+    get_allocation,
+    random_sku,
+    random_batchref,
+    random_orderid,
 ):
+    orderid = random_orderid()
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
@@ -50,16 +57,27 @@ def test_allocate_returns_200_and_allocated_batchref(
     post_to_add_batch(earlybatch, sku, 100, "2011-01-01")
     post_to_add_batch(otherbatch, othersku, 100, None)
 
-    data = {"orderid": random_orderid(), "sku": sku, "qty": 3}
+    data = {"orderid": orderid, "sku": sku, "qty": 3}
     response = requests.post(f"{url}/allocate", json=data)
 
-    assert response.status_code == 201, response.text
-    assert response.json()["batchref"] == earlybatch
+    assert response.status_code == 202, response.text
+    assert response.json()["message"] == "OK"
+
+    response = get_allocation(orderid)
+    assert response.status_code == 200, response.text
+    assert response.json() == [
+        {"batchref": earlybatch, "sku": sku, "qty": 3},
+    ]
 
 
 @pytest.mark.usefixtures("restart_api")
 def test_allocate_retuns_400_and_out_of_stock_message(
-    url, post_to_add_batch, random_sku, random_batchref, random_orderid
+    url,
+    post_to_add_batch,
+    get_allocation,
+    random_sku,
+    random_batchref,
+    random_orderid,
 ):
     sku, small_batch, large_order = (
         random_sku(),
@@ -75,10 +93,13 @@ def test_allocate_retuns_400_and_out_of_stock_message(
     assert response.status_code == 400, response.text
     assert response.json()["message"] == "Out of stock"
 
+    response = get_allocation(large_order)
+    assert response.status_code == 404, response.text
+
 
 @pytest.mark.usefixtures("restart_api")
 def test_allocate_returns_400_invalid_sku_message(
-    url, random_sku, random_orderid
+    url, get_allocation, random_sku, random_orderid
 ):
     unknown_sku, orderid = random_sku(), random_orderid()
 
@@ -88,12 +109,16 @@ def test_allocate_returns_400_invalid_sku_message(
     assert response.status_code == 400, response.text
     assert response.json()["message"] == f"Invalid sku {unknown_sku}"
 
+    response = get_allocation(orderid)
+    assert response.status_code == 404, response.text
+
 
 @pytest.mark.usefixtures("restart_api")
 def test_deallocate(
     url,
     post_to_add_batch,
     post_to_allocate,
+    get_allocation,
     random_sku,
     random_batchref,
     random_orderid,
@@ -104,23 +129,30 @@ def test_deallocate(
 
     # fully allocate
     response = post_to_allocate(order1, sku, 100)
-    assert response.status_code == 201, response.text
-    assert response.json()["batchref"] == batch
+    assert response.status_code == 202, response.text
+    assert response.json()["message"] == "OK"
+    response = get_allocation(order1)
+    assert response.status_code == 200, response.text
 
     # cannot allocate second order
     response = post_to_allocate(order2, sku, 100)
     assert response.status_code == 400, response.text
+    response = get_allocation(order2)
+    assert response.status_code == 404, response.text
 
     # deallocate
     response = requests.post(
         f"{url}/deallocate", json={"orderid": order1, "sku": sku, "qty": 100}
     )
     assert response.status_code == 200, response.text
+    assert response.json()["message"] == "OK"
 
     # now we can allocate second order
     response = post_to_allocate(order2, sku, 100)
-    assert response.status_code == 201, response.text
-    assert response.json()["batchref"] == batch
+    assert response.status_code == 202, response.text
+    assert response.json()["message"] == "OK"
+    response = get_allocation(order2)
+    assert response.status_code == 200, response.text
 
 
 @pytest.mark.usefixtures("restart_api")
@@ -139,7 +171,7 @@ def test_change_batch_quantity_leading_to_reallocation(
     post_to_add_batch(later_batch, sku, 100, "2011-01-02")
 
     response = post_to_allocate(orderid, sku, 100)
-    assert response.json()["batchref"] == earlier_batch
+    assert response.status_code == 202, response.text
 
     subscription = subscribe("line_allocated")
 
