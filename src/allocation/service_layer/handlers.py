@@ -1,4 +1,4 @@
-from allocation.adapters import email
+from allocation.adapters import email, event_publisher
 from allocation.domain import commands, events, model
 from allocation.service_layer import unit_of_work
 
@@ -63,6 +63,12 @@ def deallocate(
 
         product.deallocate(line)
         uow.commit()
+
+
+def publish_allocated_event(
+    message: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
+):
+    event_publisher.publish("line_allocated", message)
 
 
 def send_out_of_stock_notification(

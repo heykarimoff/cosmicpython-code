@@ -3,7 +3,7 @@ from datetime import date
 from typing import List, NewType, Optional, Set
 
 from allocation.domain.commands import Allocate
-from allocation.domain.events import Event, OutOfStock
+from allocation.domain.events import Allocated, Event, OutOfStock
 
 Reference = NewType("Reference", str)
 Sku = NewType("Sku", str)
@@ -102,6 +102,9 @@ class Product:
             return None
 
         batch.allocate(line)
+        self.events.append(
+            Allocated(line.orderid, line.sku, line.qty, batch.reference)
+        )
 
         return batch.reference
 

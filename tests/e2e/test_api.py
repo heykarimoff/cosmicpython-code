@@ -1,5 +1,8 @@
+import json
+
 import pytest
 import requests
+from tenacity import Retrying, stop_after_delay
 
 pytestmark = pytest.mark.e2e
 
@@ -35,17 +38,17 @@ def test_add_batch(url, random_sku, random_batchref):
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_returns_200_and_allocated_batch(
-    url, post_to_add_stock, random_sku, random_batchref, random_orderid
+def test_allocate_returns_200_and_allocated_batchref(
+    url, post_to_add_batch, random_sku, random_batchref, random_orderid
 ):
     sku, othersku = random_sku(), random_sku("other")
     earlybatch = random_batchref(1)
     laterbatch = random_batchref(2)
     otherbatch = random_batchref(3)
 
-    post_to_add_stock(laterbatch, sku, 100, "2011-01-02")
-    post_to_add_stock(earlybatch, sku, 100, "2011-01-01")
-    post_to_add_stock(otherbatch, othersku, 100, None)
+    post_to_add_batch(laterbatch, sku, 100, "2011-01-02")
+    post_to_add_batch(earlybatch, sku, 100, "2011-01-01")
+    post_to_add_batch(otherbatch, othersku, 100, None)
 
     data = {"orderid": random_orderid(), "sku": sku, "qty": 3}
     response = requests.post(f"{url}/allocate", json=data)
@@ -55,15 +58,16 @@ def test_returns_200_and_allocated_batch(
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_retuns_400_and_out_of_stock_message(
-    url, post_to_add_stock, random_sku, random_batchref, random_orderid
+def test_allocate_retuns_400_and_out_of_stock_message(
+    url, post_to_add_batch, random_sku, random_batchref, random_orderid
 ):
     sku, small_batch, large_order = (
         random_sku(),
         random_batchref(),
         random_orderid(),
     )
-    post_to_add_stock(small_batch, sku, 10, "2011-01-01")
+    response = post_to_add_batch(small_batch, sku, 10, "2011-01-01")
+    assert response.status_code == 201, response.text
 
     data = {"orderid": large_order, "sku": sku, "qty": 20}
     response = requests.post(f"{url}/allocate", json=data)
@@ -73,7 +77,9 @@ def test_retuns_400_and_out_of_stock_message(
 
 
 @pytest.mark.usefixtures("restart_api")
-def test_returns_400_invalid_sku_message(url, random_sku, random_orderid):
+def test_allocate_returns_400_invalid_sku_message(
+    url, random_sku, random_orderid
+):
     unknown_sku, orderid = random_sku(), random_orderid()
 
     data = {"orderid": orderid, "sku": unknown_sku, "qty": 20}
@@ -85,35 +91,64 @@ def test_returns_400_invalid_sku_message(url, random_sku, random_orderid):
 
 @pytest.mark.usefixtures("restart_api")
 def test_deallocate(
-    url, post_to_add_stock, random_sku, random_batchref, random_orderid
+    url,
+    post_to_add_batch,
+    post_to_allocate,
+    random_sku,
+    random_batchref,
+    random_orderid,
 ):
     sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
     batch = random_batchref()
-    post_to_add_stock(batch, sku, 100, "2011-01-01")
+    post_to_add_batch(batch, sku, 100, "2011-01-01")
 
     # fully allocate
-    response = requests.post(
-        f"{url}/allocate", json={"orderid": order1, "sku": sku, "qty": 100}
-    )
-
+    response = post_to_allocate(order1, sku, 100)
+    assert response.status_code == 201, response.text
     assert response.json()["batchref"] == batch
 
     # cannot allocate second order
-    response = requests.post(
-        f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
-    )
-
+    response = post_to_allocate(order2, sku, 100)
     assert response.status_code == 400, response.text
 
     # deallocate
     response = requests.post(
         f"{url}/deallocate", json={"orderid": order1, "sku": sku, "qty": 100}
     )
-    assert response.ok
+    assert response.status_code == 200, response.text
 
     # now we can allocate second order
-    response = requests.post(
-        f"{url}/allocate", json={"orderid": order2, "sku": sku, "qty": 100}
-    )
-    assert response.ok
+    response = post_to_allocate(order2, sku, 100)
+    assert response.status_code == 201, response.text
     assert response.json()["batchref"] == batch
+
+
+@pytest.mark.usefixtures("restart_api")
+def test_change_batch_quantity_leading_to_reallocation(
+    post_to_add_batch,
+    post_to_allocate,
+    random_sku,
+    random_batchref,
+    random_orderid,
+    subscribe,
+    publish,
+):
+    orderid, sku = random_orderid(), random_sku()
+    earlier_batch, later_batch = random_batchref("old"), random_batchref("new")
+    post_to_add_batch(earlier_batch, sku, 100, "2011-01-01")
+    post_to_add_batch(later_batch, sku, 100, "2011-01-02")
+
+    response = post_to_allocate(orderid, sku, 100)
+    assert response.json()["batchref"] == earlier_batch
+
+    subscription = subscribe("line_allocated")
+
+    publish("change_batch_quantity", {"batchref": earlier_batch, "qty": 50})
+
+    for attempt in Retrying(stop=stop_after_delay(3), reraise=True):
+        with attempt:
+            message = subscription.get_message(timeout=1)
+            if message:
+                data = json.loads(message["data"])
+                assert data["orderid"] == orderid
+                assert data["batchref"] == later_batch

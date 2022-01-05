@@ -6,10 +6,12 @@ services:
       dockerfile: Dockerfile
     depends_on:
       - postgres
+      - redis
     environment:
       - DB_HOST=postgres
       - DB_PASSWORD=abc123
       - API_HOST=app
+      - REDIS_HOST=redis
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
       - ./src:/src
@@ -24,3 +26,8 @@ services:
       - POSTGRES_PASSWORD=abc123
     ports:
       - "54321:5432"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"

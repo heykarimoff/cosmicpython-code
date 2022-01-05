@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 from pathlib import Path
@@ -6,6 +7,7 @@ import pytest
 import requests
 from allocation import config
 from allocation.adapters.orm import metadata, start_mappers
+from redis import Redis
 from requests.exceptions import ConnectionError
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
@@ -78,24 +80,61 @@ def postgres_session(postgres_session_factory):
 
 
 @pytest.fixture
-def post_to_add_stock(url):
-    def _add_stock(reference, sku, qty, eta):
-        response = requests.post(
-            f"{url}/add_batch",
-            json={"reference": reference, "sku": sku, "qty": qty, "eta": eta},
-        )
-        assert response.status_code == 201
-
-    return _add_stock
-
-
-@pytest.fixture
 def restart_api():
     (
         Path(__file__).parent / "../src/allocation/entrypoints/flask_app.py"
     ).touch()
     time.sleep(0.5)
     wait_for_webapp_to_come_up()
+
+
+@pytest.fixture
+def post_to_add_batch(url):
+    def _add_batch(reference, sku, qty, eta):
+        response = requests.post(
+            f"{url}/add_batch",
+            json={"reference": reference, "sku": sku, "qty": qty, "eta": eta},
+        )
+        return response
+
+    return _add_batch
+
+
+@pytest.fixture
+def post_to_allocate(url):
+    def _allocate(orderid, sku, qty):
+        response = requests.post(
+            f"{url}/allocate",
+            json={"orderid": orderid, "sku": sku, "qty": qty},
+        )
+        return response
+
+    return _allocate
+
+
+@pytest.fixture(scope="session")
+def redis_client():
+    return Redis(**config.get_redis_host_and_port())
+
+
+@pytest.fixture
+def subscribe(redis_client):
+    def _subscribe(channel):
+        pubsub = redis_client.pubsub()
+        pubsub.subscribe(channel)
+        confirmation = pubsub.get_message(timeout=3)
+        assert confirmation.get("type") == "subscribe"
+        return pubsub
+
+    return _subscribe
+
+
+@pytest.fixture
+def publish(redis_client):
+    def _publish(channel, message):
+        redis_client.publish(channel, json.dumps(message))
+
+    return _publish
 
 
 @pytest.fixture

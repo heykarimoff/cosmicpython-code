@@ -20,7 +20,7 @@ logs:
 test: up test-e2e test-integration test-unit
 
 test-e2e:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e -v -s
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e -vv -s
 
 test-integration:
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration -v -s
