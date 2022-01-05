@@ -54,11 +54,11 @@ class Batch:
     def available_quantity(self) -> Quantity:
         return Quantity(self._purchased_quantity - self.allocated_quaitity)
 
-    def allocate(self, line: OrderLine):
+    def allocate(self, line: OrderLine) -> None:
         if self.can_allocate(line):
             self._allocations.add(line)
 
-    def deallocate(self, line: OrderLine):
+    def deallocate(self, line: OrderLine) -> None:
         if line in self._allocations:
             self._allocations.remove(line)
 
@@ -92,7 +92,7 @@ class Product:
     def __gt__(self, other) -> bool:
         return len(self.batches) > len(other.batches)
 
-    def allocate(self, line: OrderLine):
+    def allocate(self, line: OrderLine) -> Reference:
         try:
             batch = next(
                 b for b in sorted(self.batches) if b.can_allocate(line)
@@ -108,11 +108,13 @@ class Product:
 
         return batch.reference
 
-    def deallocate(self, line: OrderLine):
+    def deallocate(self, line: OrderLine) -> None:
         for batch in self.batches:
             batch.deallocate(line)
 
-    def change_batch_quantity(self, reference: Reference, qty: Quantity):
+    def change_batch_quantity(
+        self, reference: Reference, qty: Quantity
+    ) -> None:
         batch = next(b for b in self.batches if b.reference == reference)
         batch._purchased_quantity = qty
         while batch.allocated_quaitity > qty:

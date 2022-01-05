@@ -23,7 +23,9 @@ def add_batch(
         uow.commit()
 
 
-def change_batch_quantity(message: commands.ChangeBatchQuantity, uow):
+def change_batch_quantity(
+    message: commands.ChangeBatchQuantity, uow: unit_of_work.AbstractUnitOfWork
+):
     with uow:
         product = uow.products.get_by_batch_reference(
             reference=message.reference
