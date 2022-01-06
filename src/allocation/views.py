@@ -8,11 +8,9 @@ def allocations(
     with uow:
         results = list(
             uow.session.execute(
-                "SELECT ol.sku, ol.qty, b.reference"
-                " FROM allocations AS a"
-                " JOIN batches AS b ON a.batch_id = b.id"
-                " JOIN order_lines AS ol ON a.orderline_id = ol.id"
-                " WHERE ol.orderid = :orderid",
+                "SELECT sku, qty, batchref"
+                " FROM allocations_view"
+                " WHERE orderid = :orderid",
                 {"orderid": orderid},
             )
         )

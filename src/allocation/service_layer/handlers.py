@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 from allocation.adapters import email, event_publisher
 from allocation.domain import commands, events, model
 from allocation.service_layer import unit_of_work
@@ -53,6 +55,12 @@ def allocate(
     return batchref
 
 
+def reallocate(
+    message: events.Deallocated, uow: unit_of_work.AbstractUnitOfWork
+) -> None:
+    allocate(commands.Allocate(**asdict(message)), uow)
+
+
 def deallocate(
     message: commands.Deallocate, uow: unit_of_work.AbstractUnitOfWork
 ) -> None:
@@ -77,3 +85,35 @@ def send_out_of_stock_notification(
     message: events.OutOfStock, uow: unit_of_work.AbstractUnitOfWork
 ):
     email.send_mail("stock-admin@made.com", f"Out of stock: {message.sku}")
+
+
+def add_allocation_to_read_model(
+    message: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
+):
+    with uow:
+        uow.session.execute(
+            "INSERT INTO allocations_view (orderid, sku, qty, batchref)"
+            " VALUES (:orderid, :sku, :qty, :batchref)",
+            {
+                "orderid": message.orderid,
+                "sku": message.sku,
+                "qty": message.qty,
+                "batchref": message.batchref,
+            },
+        )
+        uow.commit()
+
+
+def remove_allocation_from_read_model(
+    message: events.Deallocated, uow: unit_of_work.AbstractUnitOfWork
+):
+    with uow:
+        uow.session.execute(
+            "DELETE FROM allocations_view"
+            " WHERE orderid = :orderid AND sku = :sku",
+            {
+                "orderid": message.orderid,
+                "sku": message.sku,
+            },
+        )
+        uow.commit()

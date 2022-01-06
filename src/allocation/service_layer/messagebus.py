@@ -61,7 +61,14 @@ def handle_command(
 
 
 EVENT_HANDLERS = {
-    events.Allocated: [handlers.publish_allocated_event],
+    events.Allocated: [
+        handlers.publish_allocated_event,
+        handlers.add_allocation_to_read_model,
+    ],
+    events.Deallocated: [
+        handlers.reallocate,
+        handlers.remove_allocation_from_read_model,
+    ],
     events.OutOfStock: [handlers.send_out_of_stock_notification],
 }
 
