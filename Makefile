@@ -9,13 +9,13 @@ build:
 	docker-compose build
 
 up:
-	docker-compose up -d app
+	docker-compose up -d
 
 down:
 	docker-compose down
 
 logs:
-	docker-compose logs --tail=100 app
+	docker-compose logs --tail=100
 
 test: up test-e2e test-integration test-unit
 

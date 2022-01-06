@@ -5,7 +5,7 @@ from allocation import bootstrap, config
 from allocation.domain import commands
 from redis import Redis
 
-logger = logging.getLevelName(__name__)
+logger = logging.getLogger(__name__)
 redis_client = Redis(**config.get_redis_host_and_port())
 
 
@@ -21,7 +21,7 @@ def main():
 
 def handle_change_batch_quantity(message, messagebus):
     data = json.loads(message["data"])
-    command = commands.ChangeBatchQuantity(data["reference"], data["qty"])
+    command = commands.ChangeBatchQuantity(data["batchref"], data["qty"])
     messagebus.handle(message=command)
 
 
