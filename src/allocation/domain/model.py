@@ -62,7 +62,7 @@ class Batch:
             self._allocations.remove(line)
 
     def can_allocate(self, line: OrderLine) -> bool:
-        return self.sku == line.sku and line.qty <= self.available_quantity
+        return self.sku == line.sku and 0 < line.qty <= self.available_quantity
 
     def deallocate_one(self) -> Optional[OrderLine]:
         if self._allocations:
