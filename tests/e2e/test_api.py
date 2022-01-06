@@ -7,6 +7,7 @@ from tenacity import Retrying, stop_after_delay
 pytestmark = pytest.mark.e2e
 
 
+@pytest.mark.smoke
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
 def test_add_batch(url, random_sku, random_batchref):
@@ -38,6 +39,7 @@ def test_add_batch(url, random_sku, random_batchref):
     assert response.json()["message"] == "OK"
 
 
+@pytest.mark.smoke
 @pytest.mark.usefixtures("restart_api")
 def test_allocate_returns_200_and_allocated_batchref(
     url,
@@ -113,6 +115,7 @@ def test_allocate_returns_400_invalid_sku_message(
     assert response.status_code == 404, response.text
 
 
+@pytest.mark.smoke
 @pytest.mark.usefixtures("restart_api")
 def test_deallocate(
     url,
@@ -155,6 +158,7 @@ def test_deallocate(
     assert response.status_code == 200, response.text
 
 
+@pytest.mark.smoke
 @pytest.mark.usefixtures("restart_api")
 def test_change_batch_quantity_leading_to_reallocation(
     post_to_add_batch,

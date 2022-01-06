@@ -63,6 +63,7 @@ def messagebus():
     return bus
 
 
+@pytest.mark.smoke
 def test_add_batch_for_new_product(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
@@ -76,6 +77,7 @@ def test_add_batch_for_new_product(messagebus):
     assert messagebus.uow.committed
 
 
+@pytest.mark.smoke
 def test_add_batch_for_existing_product(messagebus):
     history = [
         commands.CreateBatch(
@@ -96,6 +98,7 @@ def test_add_batch_for_existing_product(messagebus):
     assert messagebus.uow.committed
 
 
+@pytest.mark.smoke
 def test_allocate_returns_allocation(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
@@ -124,6 +127,7 @@ def test_allocate_errors_for_invalid_sku(messagebus):
         messagebus.handle(message)
 
 
+@pytest.mark.smoke
 def test_deallocate(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
@@ -149,6 +153,7 @@ def test_deallocate(messagebus):
     assert messagebus.uow.committed
 
 
+@pytest.mark.smoke
 def test_changes_available_quantity(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="ADORABLE-SETTEE", qty=100

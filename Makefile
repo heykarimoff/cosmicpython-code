@@ -28,6 +28,9 @@ test-integration:
 test-unit:
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit -v -s
 
+test-smoke:
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -vv -s -m smoke
+
 check-black:
 	black --line-length 80 --diff --check .
 

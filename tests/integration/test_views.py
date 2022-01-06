@@ -19,6 +19,7 @@ def messagebus(session_factory):
     return bus
 
 
+@pytest.mark.smoke
 def test_allocations_view(messagebus, random_orderid):
     orderid = random_orderid()
     messagebus.handle(commands.CreateBatch("sku1batch", "sku1", 50, None))

@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+import pytest
 from allocation.domain.events import OutOfStock
 from allocation.domain.model import Batch, OrderLine, Product
 
@@ -8,6 +9,7 @@ tomorrow = today + timedelta(days=1)
 later = tomorrow + timedelta(days=10)
 
 
+@pytest.mark.smoke
 def test_prefers_warehouse_batches_to_shipments():
     in_stock_batch = Batch("batch-001", "BIG-SOFA", qty=20, eta=None)
     shipment_batch = Batch("batch-002", "BIG-SOFA", qty=20, eta=today)
@@ -31,6 +33,7 @@ def test_returns_allocated_batch_reference():
     assert allocation == in_stock_batch.reference
 
 
+@pytest.mark.smoke
 def test_prefers_earlier_batches():
     tomorrows_batch = Batch("batch-001", "MINI-SPOON", qty=20, eta=tomorrow)
     upcoming_batch = Batch("batch-001", "MINI-SPOON", qty=20, eta=later)

@@ -1,5 +1,6 @@
 from datetime import date
 
+import pytest
 from allocation.domain import model
 
 
@@ -27,6 +28,7 @@ def test_orderline_mapper_can_save_lines(session):
     assert rows == [("order1", "DECORATIVE-WIDGET", 12)]
 
 
+@pytest.mark.smoke
 def test_retrieving_products(session):
     session.execute(
         "INSERT INTO products (sku) VALUES ('RED-CHAIR'), ('RED-TABLE')"
@@ -39,6 +41,7 @@ def test_retrieving_products(session):
     assert session.query(model.Product).all() == expected
 
 
+@pytest.mark.smoke
 def test_saving_products(session):
     product = model.Product("sku1", [])
     session.add(product)

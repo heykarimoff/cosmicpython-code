@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+import pytest
 from allocation.domain.model import Batch, OrderLine
 
 today = date.today()
@@ -14,6 +15,7 @@ def make_batch_and_line(sku, batch_qty, line_qty):
     )
 
 
+@pytest.mark.smoke
 def test_allocating_to_a_batch_reduces_the_available_quantity():
     batch, line = make_batch_and_line("SMALL-TABLE", 20, 10)
 
@@ -22,18 +24,21 @@ def test_allocating_to_a_batch_reduces_the_available_quantity():
     assert batch.available_quantity == 10
 
 
+@pytest.mark.smoke
 def test_can_allocate_if_available_greater_than_required():
     large_batch, small_line = make_batch_and_line("SMALL-TABLE", 20, 2)
 
     assert large_batch.can_allocate(small_line)
 
 
+@pytest.mark.smoke
 def test_cannot_allocate_if_available_smaller_than_required():
     small_batch, large_line = make_batch_and_line("SMALL-TABLE", 10, 20)
 
     assert not small_batch.can_allocate(large_line)
 
 
+@pytest.mark.smoke
 def test_can_allocate_if_available_equal_to_required():
     batch, line = make_batch_and_line("SMALL-TABLE", 20, 20)
 
