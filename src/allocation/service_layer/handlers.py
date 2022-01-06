@@ -1,6 +1,6 @@
 from dataclasses import asdict
+from typing import Callable
 
-from allocation.adapters import email, event_publisher
 from allocation.domain import commands, events, model
 from allocation.service_layer import unit_of_work
 
@@ -76,15 +76,15 @@ def deallocate(
 
 
 def publish_allocated_event(
-    message: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
-):
-    event_publisher.publish("line_allocated", message)
+    message: events.Allocated, publish: Callable
+) -> None:
+    publish("line_allocated", message)
 
 
 def send_out_of_stock_notification(
-    message: events.OutOfStock, uow: unit_of_work.AbstractUnitOfWork
-):
-    email.send_mail("stock-admin@made.com", f"Out of stock: {message.sku}")
+    message: events.OutOfStock, send_mail: Callable
+) -> None:
+    send_mail("stock-admin@made.com", f"Out of stock: {message.sku}")
 
 
 def add_allocation_to_read_model(
