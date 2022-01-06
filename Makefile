@@ -20,16 +20,16 @@ logs:
 test: up test-e2e test-integration test-unit
 
 test-e2e:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e -vv -s
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e -vv -rs
 
 test-integration:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration -v -s
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/integration -v -rs
 
 test-unit:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit -v -s
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/unit -v -rs
 
 test-smoke:
-	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -vv -s -m smoke
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -vv -rs -m smoke
 
 check-black:
 	black --line-length 80 --diff --check .
