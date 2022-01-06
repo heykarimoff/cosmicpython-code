@@ -2,9 +2,10 @@ from datetime import date
 from typing import List
 
 import pytest
+from allocation import bootstrap
 from allocation.adapters import repository
 from allocation.domain import commands, model
-from allocation.service_layer import handlers, messagebus, unit_of_work
+from allocation.service_layer import handlers, unit_of_work
 
 
 class FakeRepository:
@@ -51,22 +52,31 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         pass
 
 
-def test_add_batch_for_new_product():
-    uow = FakeUnitOfWork()
+@pytest.fixture
+def messagebus():
+    bus = bootstrap.bootstrap(
+        start_orm=False,
+        uow=FakeUnitOfWork(),
+        send_mail=lambda *args, **kwargs: None,
+        publish=lambda *args, **kwargs: None,
+    )
+    return bus
+
+
+def test_add_batch_for_new_product(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
 
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
-    assert uow.products.get("COMPLICATED-LAMP") is not None
-    product = uow.products.get("COMPLICATED-LAMP")
+    assert messagebus.uow.products.get("COMPLICATED-LAMP") is not None
+    product = messagebus.uow.products.get("COMPLICATED-LAMP")
     assert "batch1" in [b.reference for b in product.batches]
-    assert uow.committed
+    assert messagebus.uow.committed
 
 
-def test_add_batch_for_existing_product():
-    uow = FakeUnitOfWork()
+def test_add_batch_for_existing_product(messagebus):
     history = [
         commands.CreateBatch(
             reference="batch1", sku="CRUNCHY-ARMCHAIR", qty=10
@@ -77,35 +87,33 @@ def test_add_batch_for_existing_product():
     ]
 
     for message in history:
-        messagebus.handle(message, uow)
+        messagebus.handle(message)
 
-    assert uow.products.get("CRUNCHY-ARMCHAIR") is not None
-    product = uow.products.get("CRUNCHY-ARMCHAIR")
+    assert messagebus.uow.products.get("CRUNCHY-ARMCHAIR") is not None
+    product = messagebus.uow.products.get("CRUNCHY-ARMCHAIR")
     assert "batch1" in [b.reference for b in product.batches]
     assert "batch2" in [b.reference for b in product.batches]
-    assert uow.committed
+    assert messagebus.uow.committed
 
 
-def test_allocate_returns_allocation():
-    uow = FakeUnitOfWork()
+def test_allocate_returns_allocation(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
     message = commands.Allocate(
         orderid="order1", sku="COMPLICATED-LAMP", qty=10
     )
-    [batchref] = messagebus.handle(message, uow)
+    [batchref] = messagebus.handle(message)
 
     assert batchref == "batch1"
-    assert uow.committed
+    assert messagebus.uow.committed
 
 
-def test_allocate_errors_for_invalid_sku():
-    uow = FakeUnitOfWork()
+def test_allocate_errors_for_invalid_sku(messagebus):
     message = commands.CreateBatch(reference="batch1", sku="AREALSKU", qty=100)
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
     with pytest.raises(
         handlers.InvalidSku, match="Invalid sku NON-EXISTENTSKU"
@@ -113,22 +121,21 @@ def test_allocate_errors_for_invalid_sku():
         message = commands.Allocate(
             orderid="order1", sku="NON-EXISTENTSKU", qty=10
         )
-        messagebus.handle(message, uow)
+        messagebus.handle(message)
 
 
-def test_deallocate():
-    uow = FakeUnitOfWork()
+def test_deallocate(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="COMPLICATED-LAMP", qty=100
     )
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
     message = commands.Allocate(
         orderid="order1", sku="COMPLICATED-LAMP", qty=10
     )
-    [batchref] = messagebus.handle(message, uow)
+    [batchref] = messagebus.handle(message)
     assert batchref == "batch1"
-    product = uow.products.get("COMPLICATED-LAMP")
+    product = messagebus.uow.products.get("COMPLICATED-LAMP")
     batch = product.batches[0]
     assert batch.reference == "batch1"
     assert batch.allocated_quaitity == 10
@@ -136,30 +143,30 @@ def test_deallocate():
     message = commands.Deallocate(
         orderid="order1", sku="COMPLICATED-LAMP", qty=10
     )
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
     assert batch.allocated_quaitity == 0
-    assert uow.committed
+    assert messagebus.uow.committed
 
 
-def test_changes_available_quantity():
-    uow = FakeUnitOfWork()
+def test_changes_available_quantity(messagebus):
     message = commands.CreateBatch(
         reference="batch1", sku="ADORABLE-SETTEE", qty=100
     )
-    messagebus.handle(message, uow)
-    [batch] = uow.products.get("ADORABLE-SETTEE").batches
+    messagebus.handle(message)
+    [batch] = messagebus.uow.products.get("ADORABLE-SETTEE").batches
 
     assert batch.available_quantity == 100
 
     message = commands.ChangeBatchQuantity(reference="batch1", qty=50)
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
     assert batch.available_quantity == 50
 
 
-def test_realocates_batch_if_nessesary_when_available_quantity_reduces():
-    uow = FakeUnitOfWork()
+def test_realocates_batch_if_nessesary_when_available_quantity_reduces(
+    messagebus,
+):
     history = [
         commands.CreateBatch(
             reference="batch1", sku="INDIFFERENT-TABLE", qty=100
@@ -174,14 +181,14 @@ def test_realocates_batch_if_nessesary_when_available_quantity_reduces():
         commands.Allocate(orderid="order2", sku="INDIFFERENT-TABLE", qty=50),
     ]
     for message in history:
-        messagebus.handle(message, uow)
-    [batch1, batch2] = uow.products.get("INDIFFERENT-TABLE").batches
+        messagebus.handle(message)
+    [batch1, batch2] = messagebus.uow.products.get("INDIFFERENT-TABLE").batches
 
     assert batch1.available_quantity == 0
     assert batch2.available_quantity == 100
 
     message = commands.ChangeBatchQuantity(reference="batch1", qty=55)
-    messagebus.handle(message, uow)
+    messagebus.handle(message)
 
     assert batch1.available_quantity == 5
     assert batch2.available_quantity == 50
