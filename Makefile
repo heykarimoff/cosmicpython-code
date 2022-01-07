@@ -19,6 +19,8 @@ logs:
 
 test: up test-e2e test-integration test-unit
 
+test-coverage: up coverage
+
 test-e2e:
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests/e2e -vv -rs
 
@@ -31,7 +33,7 @@ test-unit:
 test-smoke:
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -vv -rs -m smoke
 
-test-coverage:
+coverage:
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -q -rs --cov=allocation --cov-report xml:coverage.xml
 
 check-black:
