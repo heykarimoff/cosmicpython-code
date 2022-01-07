@@ -31,6 +31,9 @@ test-unit:
 test-smoke:
 	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -vv -rs -m smoke
 
+test-coverage:
+	docker-compose run --rm --no-deps --entrypoint=pytest app /tests -q -rs --cov=allocation
+
 check-black:
 	black --line-length 80 --diff --check .
 
