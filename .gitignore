@@ -4,3 +4,5 @@
 .pytest_cache
 __pycache__
 *.egg-info
+src/.coverage
+src/coverage.xml

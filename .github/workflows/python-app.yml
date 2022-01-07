@@ -37,6 +37,12 @@ jobs:
       - name: Build
         run: |
           make build
-      - name: Test
+      - name: Run tests
         run: |
-          make test
+          make test-coverage
+      - name: Report test coverage to DeepSource
+        uses: deepsourcelabs/test-coverage-action@master
+        with:
+          key: python
+          coverage-file: src/coverage.xml
+          dsn: ${{ secrets.DEEPSOURCE_DSN }}
